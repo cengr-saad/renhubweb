@@ -1,20 +1,30 @@
-# Multi-stage Dockerfile for LeasoRent Web Production
 # Stage 1: Build the application
 FROM node:20-alpine AS builder
 
-# Install build dependencies if needed (some npm packages require compilation)
-RUN apk add --no-cache python3 make g++
+# Install Git and build essentials
+RUN apk add --no-cache git python3 make g++
+
+# Define build arguments for the repository
+ARG REPO_URL
+ARG GITHUB_TOKEN
+ARG BRANCH=main
 
 WORKDIR /app
 
-# Copy package files first for better caching
-COPY package.json package-lock.json ./
+# Clone the repository using the token (if provided) or public URL
+# We use a trick to ensure we always pull the latest: add a random cache buster
+ADD https://api.github.com/repos/cengr-saad/renhubweb/git/refs/heads/${BRANCH} version.json
+RUN if [ -z "$GITHUB_TOKEN" ] ; then \
+      git clone --depth 1 --branch ${BRANCH} https://github.com/cengr-saad/renhubweb.git . ; \
+    else \
+      git clone --depth 1 --branch ${BRANCH} https://${GITHUB_TOKEN}@github.com/cengr-saad/renhubweb.git . ; \
+    fi
 
-# Install all dependencies (including devDependencies for the build)
+# Move into the web directory if your project is in a monorepo
+# WORKDIR /app/web
+
+# Install all dependencies
 RUN npm ci
-
-# Copy the rest of the source code
-COPY . .
 
 # Build the client and server
 # This script runs vite build and esbuild

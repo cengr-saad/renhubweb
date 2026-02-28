@@ -30,6 +30,10 @@ RUN npm ci
 # This script runs vite build and esbuild
 RUN npm run build
 
+# PRUNE devDependencies to keep the final image small
+# This happens in the builder stage to save time in the final stage
+RUN npm prune --omit=dev
+
 # Stage 2: Production environment
 FROM node:20-alpine
 
@@ -38,11 +42,9 @@ WORKDIR /app
 # Copy build artifacts from builder stage
 # dist/ contains both the bundled server (index.cjs) and the public/ client files
 COPY --from=builder /app/dist ./dist
+# Copy the PRUNED node_modules instead of re-installing
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
-
-# Install only production dependencies
-# Even though we bundle many deps, some might be externalized in script/build.ts
-RUN npm install --omit=dev && npm cache clean --force
 
 # Set environment to production
 ENV NODE_ENV=production

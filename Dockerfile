@@ -1,48 +1,35 @@
-# Stage 1: Build the application
+# --- Stage 1: Build Stage ---
 FROM node:20-alpine AS builder
 
-# Install Git and build essentials
-RUN apk add --no-cache git python3 make g++
-
-# Define build arguments for the repository
-ARG REPO_URL
-ARG GITHUB_TOKEN
-ARG BRANCH=main
-
+# Set working directory
 WORKDIR /app
 
-# Clone the repository using the token (if provided) or public URL
-# We use a trick to ensure we always pull the latest: add a random cache buster
-ADD https://api.github.com/repos/cengr-saad/renhubweb/git/refs/heads/${BRANCH} version.json
-RUN rm version.json && if [ -z "$GITHUB_TOKEN" ] ; then \
-      git clone --depth 1 --branch ${BRANCH} https://github.com/cengr-saad/renhubweb.git . ; \
-    else \
-      git clone --depth 1 --branch ${BRANCH} https://${GITHUB_TOKEN}@github.com/cengr-saad/renhubweb.git . ; \
-    fi
+# Install git to clone the repository
+RUN apk add --no-cache git
 
-# Move into the web directory if your project is in a monorepo
-# WORKDIR /app/web
+# Concept: Clone the repository directly into the app folder
+# This ensures we always build the latest code from GitHub
+RUN git clone --depth 1 https://github.com/cengr-saad/renhubweb.git .
 
-# Install all dependencies
-RUN npm ci
-
-# Build the client and server
-# This script runs vite build and esbuild
+# Install dependencies and build the application
+# We use 'npm ci' for faster, more reliable installs in CI/production
+# --no-audit and --no-fund reduce memory usage and overhead
+RUN npm ci --no-audit --no-fund --quiet
 RUN npm run build
 
-# PRUNE devDependencies to keep the final image small
-# This happens in the builder stage to save time in the final stage
+# Prune dev dependencies to keep the image small
 RUN npm prune --omit=dev
 
-# Stage 2: Production environment
+# --- Stage 2: Production Stage ---
+# Concept: Optimized production runtime
+# Note: We use Node.js instead of Nginx because this app includes a backend server (Express)
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy build artifacts from builder stage
-# dist/ contains both the bundled server (index.cjs) and the public/ client files
+# Copy the built assets and the production server from the builder stage
+# dist/ contains both 'index.cjs' (server) and 'public/' (client static files)
 COPY --from=builder /app/dist ./dist
-# Copy the PRUNED node_modules instead of re-installing
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
@@ -54,5 +41,6 @@ ENV PORT=5000
 # Expose the internal port
 EXPOSE 5000
 
-# Launch the server
+# Concept: Launch the integrated server
+# In this app, the Express server handles both API and static file serving
 CMD ["node", "dist/index.cjs"]

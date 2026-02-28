@@ -1,19 +1,15 @@
 # Docker Compose configuration for LeasoRent Web Production
 services:
   web:
-    build:
-      context: .
-      args:
-        - GITHUB_TOKEN=your-token-if-needed # Only if the repo is private
-        - BRANCH=main
+    build: .
     ports:
       - "5000:5000"
     environment:
       # Database access URL (example format shown below)
-      - DATABASE_URL=postgresql://postgres.user:password@host:port/postgres
+      - DATABASE_URL=postgresql://postgres.mpjvjuhfrlybitvhsvvw:Formula12.13FORMULA@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres
       # Supabase integration (if used by the client/server)
-      - VITE_SUPABASE_URL=https://your-project.supabase.co
-      - VITE_SUPABASE_ANON_KEY=your-anon-key
+      - VITE_SUPABASE_URL=https://mpjvjuhfrlybitvhsvvw.supabase.co
+      - VITE_SUPABASE_ANON_KEY=sb_publishable_beCqGLOQ3SDsrBKS_lAQmQ_PGJlwN8VEAS_NO_VCS=1
       - NODE_ENV=production
       - PORT=5000
     restart: always

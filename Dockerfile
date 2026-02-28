@@ -14,7 +14,7 @@ WORKDIR /app
 # Clone the repository using the token (if provided) or public URL
 # We use a trick to ensure we always pull the latest: add a random cache buster
 ADD https://api.github.com/repos/cengr-saad/renhubweb/git/refs/heads/${BRANCH} version.json
-RUN if [ -z "$GITHUB_TOKEN" ] ; then \
+RUN rm version.json && if [ -z "$GITHUB_TOKEN" ] ; then \
       git clone --depth 1 --branch ${BRANCH} https://github.com/cengr-saad/renhubweb.git . ; \
     else \
       git clone --depth 1 --branch ${BRANCH} https://${GITHUB_TOKEN}@github.com/cengr-saad/renhubweb.git . ; \
